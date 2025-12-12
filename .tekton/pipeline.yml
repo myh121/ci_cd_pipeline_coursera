@@ -1,0 +1,53 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ci-cd-pipeline
+spec:
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: https://github.com/myh121/ci_cd_pipeline_coursera.git
+        - name: subdirectory
+          value: ""
+        - name: deleteExisting
+          value: "true"
+
+    - name: cleanup
+      taskRef:
+        name: cleanup
+      runAfter:
+        - fetch-repository
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    - name: lint-and-test
+      taskRef:
+        name: lint-and-test
+      runAfter:
+        - cleanup
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+
+    - name: build-and-push
+      taskRef:
+        name: buildah
+      runAfter:
+        - lint-and-test
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: image-registry.openshift-image-registry.svc:5000/$(context.taskRun.namespace)/counter-app:latest
+        - name: TLSVERIFY
+          value: "false"
